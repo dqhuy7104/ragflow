@@ -184,7 +184,7 @@ func (s *KnowledgebaseService) CreateKB(req *CreateKBRequest, tenantID string) (
 	}
 
 	// Create in database
-	if err := s.kbDAO.Create(kb); err != nil {
+	if err = s.kbDAO.Create(kb); err != nil {
 		return nil, common.CodeServerError, fmt.Errorf("failed to create knowledge base: %w", err)
 	}
 
@@ -473,6 +473,11 @@ func (s *KnowledgebaseService) DeleteKB(kbID, userID string) (common.ErrorCode, 
 // Accessible checks if a knowledge base is accessible by a user
 func (s *KnowledgebaseService) Accessible(kbID, userID string) bool {
 	return s.kbDAO.Accessible(kbID, userID)
+}
+
+// RemoveTag removes a tag from documents in a dataset
+func (s *KnowledgebaseService) RemoveTag(condition map[string]interface{}, newValue map[string]interface{}, indexName, kbID string) error {
+	return s.docEngine.UpdateDataset(context.Background(), condition, newValue, indexName, kbID)
 }
 
 // GetByID retrieves a knowledge base by ID
