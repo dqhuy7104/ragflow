@@ -481,12 +481,8 @@ class Parser(ProcessBase):
                 filepath=name,
                 binary=blob,
                 callback=self.callback,
-<<<<<<< HEAD
                 parse_method=conf.get("paddleocr_parse_method", "raw"),
                 lang=self._param.setups["pdf"].get("lang"),
-=======
-                parse_method="pipeline",
->>>>>>> 4a2a17c27a1034e580fb2e9e2c06d3f8aa2aeff0
             )
             bboxes = []
             for line in lines or []:
