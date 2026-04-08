@@ -400,7 +400,7 @@ referencing==0.37.0
 regex==2026.3.32
 replicate==0.31.0
 reportlab==4.4.10
-requests==2.33.1
+requests>=2.32.0,<3.0.0
 requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
 retry==0.9.2
@@ -422,7 +422,7 @@ scipy==1.17.1
 seaborn==0.13.2
 selenium==4.32.0
 selenium-wire==5.1.0
-setuptools==82.0.1
+setuptools<81.0.0,>=78.1.1
 sgmllib3k==1.0.0
 shapely==2.1.2
 shellingham==1.5.4
