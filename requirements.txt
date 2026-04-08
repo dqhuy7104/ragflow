@@ -466,7 +466,7 @@ tiktoken>=0.12.0
 tokenizers>=0.22.2
 torch>=2.10.0
 torchaudio>=2.11.0
-torchvision>=0.25.0
+torchvision==0.25.0
 tqdm>=4.67.3
 trec-car-tools>=2.6
 trimesh>=4.11.5
