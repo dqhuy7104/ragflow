@@ -419,7 +419,7 @@ scipy==1.17.1
 seaborn==0.13.2
 selenium==4.32.0
 selenium-wire==5.1.0
-setuptools==82.0.1
+setuptools<81.0.0,>=78.1.1
 sgmllib3k==1.0.0
 shapely==2.1.2
 shellingham==1.5.4
