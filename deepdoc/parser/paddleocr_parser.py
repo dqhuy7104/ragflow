@@ -100,6 +100,7 @@ class PaddleOCRVLConfig:
     restructure_pages: Optional[bool] = False
     merge_tables: Optional[bool] = None
     relevel_titles: Optional[bool] = None
+    language: Optional[str] = None
 
 
 @dataclass
@@ -167,6 +168,7 @@ class PaddleOCRParser(RAGFlowPdfParser):
         "prettify_markdown": "prettifyMarkdown",
         "show_formula_number": "showFormulaNumber",
         "visualize": "visualize",
+        "language": "language",
     }
 
     _ALGORITHM_FIELD_MAPPINGS: ClassVar[dict[str, dict[str, str]]] = {
@@ -206,6 +208,7 @@ class PaddleOCRParser(RAGFlowPdfParser):
         algorithm: AlgorithmType = "PaddleOCR-VL",
         *,
         request_timeout: int = 600,
+        language: Optional[str] = None,
     ):
         """Initialize PaddleOCR parser."""
         super().__init__()
@@ -215,6 +218,7 @@ class PaddleOCRParser(RAGFlowPdfParser):
         self.access_token = access_token or os.getenv("PADDLEOCR_ACCESS_TOKEN")
         self.algorithm = algorithm
         self.request_timeout = request_timeout
+        self.language = language or os.getenv("PADDLEOCR_LANGUAGE")
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Force PDF file type
@@ -270,6 +274,20 @@ class PaddleOCRParser(RAGFlowPdfParser):
             config_dict["additional_params"] = additional_params
         if algorithm_config is not None:
             config_dict["algorithm_config"] = algorithm_config
+
+        parser_cfg = kwargs.get("parser_config", {})
+        requested_language = (
+            parser_cfg.get("paddleocr_language")
+            or parser_cfg.get("language")
+            or kwargs.get("paddleocr_language")
+            or kwargs.get("language")
+            or kwargs.get("lang")
+            or self.language
+        )
+        if requested_language:
+            algorithm_cfg = dict(config_dict.get("algorithm_config") or {})
+            algorithm_cfg.setdefault("language", requested_language)
+            config_dict["algorithm_config"] = algorithm_cfg
 
         cfg = PaddleOCRConfig.from_dict(config_dict)
 
@@ -337,6 +355,8 @@ class PaddleOCRParser(RAGFlowPdfParser):
             if param_value is not None and param_key in algorithm_mapping:
                 api_param = algorithm_mapping[param_key]
                 payload[api_param] = param_value
+                if param_key == "language":
+                    payload.setdefault("lang", param_value)
 
         # Add any additional parameters
         if config.additional_params:

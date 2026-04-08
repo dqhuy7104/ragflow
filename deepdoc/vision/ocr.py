@@ -34,6 +34,7 @@ import onnxruntime as ort
 from .postprocess import build_post_process
 
 loaded_models = {}
+VIETNAMESE_HINT_CHARS = set("đĐăĂâÂêÊôÔơƠưƯ")
 
 def transform(data, ops=None):
     """ transform """
@@ -540,7 +541,7 @@ class TextDetector:
 
 
 class OCR:
-    def __init__(self, model_dir=None):
+    def __init__(self, model_dir=None, model_repo_id=None):
         """
         If you have trouble downloading HuggingFace models, -_^ this might help!!
 
@@ -552,40 +553,55 @@ class OCR:
         ^_-
 
         """
-        if not model_dir:
-            try:
-                model_dir = os.path.join(
-                        get_project_base_directory(),
-                        "rag/res/deepdoc")
-                
-                # Append muti-gpus task to the list
-                if settings.PARALLEL_DEVICES > 0:
-                    self.text_detector = []
-                    self.text_recognizer = []
-                    for device_id in range(settings.PARALLEL_DEVICES):
-                        self.text_detector.append(TextDetector(model_dir, device_id))
-                        self.text_recognizer.append(TextRecognizer(model_dir, device_id))
-                else:
-                    self.text_detector = [TextDetector(model_dir)]
-                    self.text_recognizer = [TextRecognizer(model_dir)]
+        self.model_repo_id = model_repo_id or os.getenv("DEEPDOC_OCR_REPO_ID", "InfiniFlow/deepdoc")
+        self.model_dir = model_dir or os.getenv("DEEPDOC_OCR_MODEL_DIR")
+        self._model_dir_explicit = bool(self.model_dir)
 
-            except Exception:
-                model_dir = snapshot_download(repo_id="InfiniFlow/deepdoc",
-                                              local_dir=os.path.join(get_project_base_directory(), "rag/res/deepdoc"),
-                                              local_dir_use_symlinks=False)
-                
-                if settings.PARALLEL_DEVICES > 0:
-                    self.text_detector = []
-                    self.text_recognizer = []
-                    for device_id in range(settings.PARALLEL_DEVICES):
-                        self.text_detector.append(TextDetector(model_dir, device_id))
-                        self.text_recognizer.append(TextRecognizer(model_dir, device_id))
-                else:
-                    self.text_detector = [TextDetector(model_dir)]
-                    self.text_recognizer = [TextRecognizer(model_dir)]
+        if not self.model_dir:
+            self.model_dir = os.path.join(get_project_base_directory(), "rag/res/deepdoc")
+
+        try:
+            self._load_model_bundle(self.model_dir)
+        except Exception:
+            if self._model_dir_explicit:
+                raise
+            self.model_dir = snapshot_download(
+                repo_id=self.model_repo_id,
+                local_dir=os.path.join(get_project_base_directory(), "rag/res/deepdoc"),
+                local_dir_use_symlinks=False,
+            )
+            self._load_model_bundle(self.model_dir)
 
         self.drop_score = 0.5
         self.crop_image_res_index = 0
+
+    def _load_model_bundle(self, model_dir):
+        logging.info(f"Load OCR model bundle from {model_dir}")
+
+        ocr_res_path = os.path.join(model_dir, "ocr.res")
+        self.vietnamese_capable = False
+        try:
+            with open(ocr_res_path, "r", encoding="utf-8", errors="ignore") as f:
+                vocab = f.read()
+            self.vietnamese_capable = any(ch in vocab for ch in VIETNAMESE_HINT_CHARS)
+            if not self.vietnamese_capable:
+                logging.warning(
+                    "OCR vocab %s does not contain Vietnamese-specific characters; this bundle does not look Vietnamese-trained.",
+                    ocr_res_path,
+                )
+        except Exception as exc:
+            logging.warning("Unable to inspect OCR vocab %s: %s", ocr_res_path, exc)
+
+        # Append muti-gpus task to the list
+        if settings.PARALLEL_DEVICES > 0:
+            self.text_detector = []
+            self.text_recognizer = []
+            for device_id in range(settings.PARALLEL_DEVICES):
+                self.text_detector.append(TextDetector(model_dir, device_id))
+                self.text_recognizer.append(TextRecognizer(model_dir, device_id))
+        else:
+            self.text_detector = [TextDetector(model_dir)]
+            self.text_recognizer = [TextRecognizer(model_dir)]
 
     def get_rotate_crop_image(self, img, points):
         """

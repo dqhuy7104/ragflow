@@ -54,6 +54,22 @@ We use vision information to resolve problems as human being.
     The inputs could be directory to images or PDF, or an image or PDF. 
     You can look into the folder 'path_to_store_result' where has images which demonstrate the positions of results,
     txt files which contain the OCR text.
+
+    If you want to use a different OCR base, such as a Vietnamese-trained model bundle, point `--model_dir`
+    at a directory that contains `det.onnx`, `rec.onnx`, and `ocr.res`:
+    ```bash
+    python deepdoc/vision/t_ocr.py --inputs=path_to_images_or_pdfs --output_dir=path_to_store_result --model_dir=/path/to/custom_ocr_bundle
+    ```
+
+    If you want to keep DeepDoc text detection but use VietOCR for Vietnamese recognition, install `vietocr`
+    first and then select the `vietocr` backend:
+    ```bash
+    pip install vietocr
+    python deepdoc/vision/t_ocr.py --inputs=path_to_images_or_pdfs --output_dir=path_to_store_result --backend=vietocr --vietocr_config=vgg_transformer
+    ```
+
+    You can optionally override the VietOCR weights with `--vietocr_weights=/path/or/url/to/weights.pth`.
+
     <div align="center" style="margin-top:20px;margin-bottom:20px;">
     <img src="https://github.com/infiniflow/ragflow/assets/12318111/f25bee3d-aaf7-4102-baf5-d5208361d110" width="900"/>
     </div>

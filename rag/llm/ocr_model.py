@@ -119,6 +119,7 @@ class PaddleOCROcrModel(Base, PaddleOCRParser):
         self.paddleocr_api_url = _resolve_config("paddleocr_api_url", "PADDLEOCR_API_URL", "")
         self.paddleocr_algorithm = _resolve_config("paddleocr_algorithm", "PADDLEOCR_ALGORITHM", "PaddleOCR-VL")
         self.paddleocr_access_token = _resolve_config("paddleocr_access_token", "PADDLEOCR_ACCESS_TOKEN", None)
+        self.paddleocr_language = kwargs.get("lang") or _resolve_config("paddleocr_language", "PADDLEOCR_LANGUAGE", None)
 
         # Redact sensitive config keys before logging
         redacted_config = {}
@@ -134,6 +135,7 @@ class PaddleOCROcrModel(Base, PaddleOCRParser):
             api_url=self.paddleocr_api_url,
             access_token=self.paddleocr_access_token,
             algorithm=self.paddleocr_algorithm,
+            language=self.paddleocr_language,
         )
 
     def check_available(self) -> tuple[bool, str]:

@@ -479,6 +479,7 @@ class Parser(ProcessBase):
                 binary=blob,
                 callback=self.callback,
                 parse_method=conf.get("paddleocr_parse_method", "raw"),
+                lang=self._param.setups["pdf"].get("lang"),
             )
             bboxes = []
             for t, poss in lines:

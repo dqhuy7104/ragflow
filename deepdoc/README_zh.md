@@ -56,6 +56,15 @@ export HF_ENDPOINT=https://hf-mirror.com
     ```
 
     输入可以是图像或PDF的目录，或者单个图像、PDF文件。您可以查看文件夹 `path_to_store_result` ，其中有演示结果位置的图像，以及包含OCR文本的txt文件。
+
+    如果您希望继续使用 DeepDoc 的文本检测，但改用 VietOCR 来做越南语识别，可以先安装 `vietocr`，
+    然后选择 `vietocr` 后端：
+    ```bash
+    pip install vietocr
+    python deepdoc/vision/t_ocr.py --inputs=path_to_images_or_pdfs --output_dir=path_to_store_result --backend=vietocr --vietocr_config=vgg_transformer
+    ```
+
+    如果需要，也可以通过 `--vietocr_weights=/path/or/url/to/weights.pth` 覆盖 VietOCR 默认权重。
     
     <div align="center" style="margin-top:20px;margin-bottom:20px;">
     <img src="https://github.com/infiniflow/ragflow/assets/12318111/f25bee3d-aaf7-4102-baf5-d5208361d110" width="900"/>
