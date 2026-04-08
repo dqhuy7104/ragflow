@@ -85,7 +85,7 @@ common>=0.1.2
 compressed-rtf>=1.0.7
 contourpy>=1.3.3
 cramjam>=2.11.0
-crawl4ai>=0.8.6
+crawl4ai
 crc32c>=2.8
 crcmod>=1.7
 cryptography>=46.0.6
@@ -487,7 +487,7 @@ uritemplate>=4.2.0
 urllib3>=2.6.3
 uvicorn>=0.42.0
 valkey>=6.0.2
-vietocr>=0.3.13
+vietocr
 volcengine>=1.0.194
 voyageai>=0.2.3
 warc3-wet>=0.2.5
