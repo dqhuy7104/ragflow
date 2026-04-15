@@ -1,0 +1,50 @@
+include:
+  - ./docker-compose-base.yml
+
+services:
+  ragflow:
+    depends_on:
+      mysql:
+        condition: service_healthy
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.vietocr
+      args:
+        BASE_IMAGE: ${RAGFLOW_IMAGE}
+    image: ${RAGFLOW_VIETOCR_IMAGE:-ragflow-vietocr:local}
+    command:
+      - --enable-adminserver
+    ports:
+      - "0.0.0.0:${SVR_WEB_HTTP_PORT}:80"
+      - "0.0.0.0:${SVR_WEB_HTTPS_PORT}:443"
+      - "0.0.0.0:${SVR_HTTP_PORT}:9380"
+      - "0.0.0.0:${ADMIN_SVR_HTTP_PORT}:9381"
+      - "0.0.0.0:${SVR_MCP_PORT}:9382"
+      - "0.0.0.0:${GO_HTTP_PORT}:9384"
+      - "0.0.0.0:${GO_ADMIN_PORT}:9383"
+    volumes:
+      - ../rag:/ragflow/rag
+      - ../deepdoc:/ragflow/deepdoc
+      - ../common:/ragflow/common
+      - ../conf:/ragflow/conf
+      - ./ragflow-logs:/ragflow/logs
+      - ./nginx/ragflow.conf.python:/etc/nginx/conf.d/ragflow.conf.python
+      - ./nginx/proxy.conf:/etc/nginx/proxy.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
+      - ./entrypoint.sh:/ragflow/entrypoint.sh
+    env_file: .env
+    environment:
+      DEEPDOC_OCR_RECOGNIZER_BACKEND: ${DEEPDOC_OCR_RECOGNIZER_BACKEND:-vietocr}
+      VIETOCR_CONFIG: ${VIETOCR_CONFIG:-vgg_transformer}
+      VIETOCR_USE_GPU: ${VIETOCR_USE_GPU:-false}
+      VIETOCR_WEIGHTS: ${VIETOCR_WEIGHTS:-}
+      VIETOCR_BATCH_SIZE: ${VIETOCR_BATCH_SIZE:-16}
+      TMPDIR: ${TMPDIR:-/ragflow/tmp}
+      TMP: ${TMP:-/ragflow/tmp}
+      TEMP: ${TEMP:-/ragflow/tmp}
+    networks:
+      - ragflow
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -195,10 +195,15 @@ services:
     networks:
       - ragflow
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-uroot", "-p${MYSQL_PASSWORD}"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysql -h127.0.0.1 -uroot -p${MYSQL_PASSWORD} -D${MYSQL_DBNAME:-rag_flow} -e 'SELECT 1;'",
+        ]
       interval: 10s
       timeout: 10s
       retries: 120
+      start_period: 30s
     restart: unless-stopped
 
   minio:

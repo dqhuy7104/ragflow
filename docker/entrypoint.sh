@@ -236,6 +236,78 @@ function ensure_docling() {
       || uv pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --extra-index-url https://pypi.org/simple --no-cache-dir "docling${DOCLING_PIN}"
 }
 
+function reset_vietocr_tmp_weights() {
+    if [[ -n "${VIETOCR_WEIGHTS}" ]]; then
+        echo "Keeping explicit VietOCR weights from VIETOCR_WEIGHTS=${VIETOCR_WEIGHTS}"
+        return 0
+    fi
+
+    local vietocr_tmpdir="${TMPDIR:-/tmp}"
+    mkdir -p "${vietocr_tmpdir}"
+
+    for weight_file in \
+        "/tmp/weights.pth" \
+        "/tmp/vgg_transformer.pth" \
+        "${vietocr_tmpdir}/weights.pth" \
+        "${vietocr_tmpdir}/vgg_transformer.pth"; do
+        if [[ -f "${weight_file}" ]]; then
+            echo "Removing cached VietOCR weight: ${weight_file}"
+            rm -f "${weight_file}"
+        fi
+    done
+}
+
+function wait_for_mysql() {
+    local timeout="${MYSQL_WAIT_TIMEOUT:-180}"
+    local interval="${MYSQL_WAIT_INTERVAL:-3}"
+
+    echo "Waiting for MySQL at ${MYSQL_HOST:-mysql}:${MYSQL_PORT:-3306}/${MYSQL_DBNAME:-rag_flow}..."
+    "$PY" - <<'PY'
+import os
+import sys
+import time
+
+import pymysql
+
+host = os.getenv("MYSQL_HOST", "mysql")
+port = int(os.getenv("MYSQL_PORT", "3306"))
+user = os.getenv("MYSQL_USER", "root")
+password = os.getenv("MYSQL_PASSWORD", "infini_rag_flow")
+database = os.getenv("MYSQL_DBNAME", "rag_flow")
+timeout = int(os.getenv("MYSQL_WAIT_TIMEOUT", "180"))
+interval = int(os.getenv("MYSQL_WAIT_INTERVAL", "3"))
+deadline = time.time() + timeout
+last_error = None
+
+while time.time() < deadline:
+    try:
+        conn = pymysql.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=database,
+            connect_timeout=5,
+            read_timeout=5,
+            write_timeout=5,
+            autocommit=True,
+        )
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
+        conn.close()
+        print(f"MySQL is ready at {host}:{port}/{database}")
+        sys.exit(0)
+    except Exception as exc:
+        last_error = exc
+        print(f"MySQL not ready yet: {exc}", flush=True)
+        time.sleep(interval)
+
+print(f"MySQL did not become ready within {timeout}s. Last error: {last_error}", file=sys.stderr)
+sys.exit(1)
+PY
+}
+
 function ensure_db_init() {
     echo "Initializing database tables..."
     "$PY" -c "from api.db.db_models import init_database_tables as init_web_db; init_web_db()"
@@ -264,6 +336,8 @@ function wait_for_server() {
 # Start components based on flags
 # -----------------------------------------------------------------------------
 ensure_docling
+reset_vietocr_tmp_weights
+wait_for_mysql
 ensure_db_init
 
 if [[ "${ENABLE_WEBSERVER}" -eq 1 ]]; then

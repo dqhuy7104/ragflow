@@ -1,0 +1,27 @@
+ARG BASE_IMAGE=infiniflow/ragflow:v0.24.0
+FROM ${BASE_IMAGE}
+
+USER root
+SHELL ["/bin/bash", "-c"]
+
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+ARG TORCH_VERSION=2.6.0
+ARG TORCHVISION_VERSION=0.21.0
+
+ENV VIRTUAL_ENV=/ragflow/.venv
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+ENV TMPDIR=/ragflow/tmp
+ENV TMP=/ragflow/tmp
+ENV TEMP=/ragflow/tmp
+
+# Install VietOCR and its runtime dependencies into the existing RAGFlow virtualenv.
+# Default build targets CPU wheels. For GPU builds, override TORCH_INDEX_URL and
+# the version args to a CUDA-compatible PyTorch wheel index.
+RUN mkdir -p /ragflow/tmp && \
+    python -m pip install --no-cache-dir --upgrade pip && \
+    python -m pip install --no-cache-dir --index-url ${TORCH_INDEX_URL} \
+        torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} && \
+    python -m pip install --no-cache-dir "numpy<2.4" alibabacloud_dingtalk vietocr && \
+    rm -f /tmp/weights.pth /tmp/vgg_transformer.pth /ragflow/tmp/weights.pth /ragflow/tmp/vgg_transformer.pth
+
+ENTRYPOINT ["./entrypoint.sh"]
