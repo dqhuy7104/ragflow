@@ -66,7 +66,11 @@ class VietOCRAdapter:
                 f"Original error: {exc}"
             ) from exc
 
-        self.detector = OCR(model_dir=model_dir, model_repo_id=model_repo_id)
+        self.detector = OCR(
+            model_dir=model_dir,
+            model_repo_id=model_repo_id,
+            recognition_backend="deepdoc",
+        )
         self.use_gpu = use_gpu
         self.config_name = config_name
 

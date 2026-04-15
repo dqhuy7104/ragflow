@@ -1,0 +1,5 @@
+file 1.pdf | 117 trang | 35.4 MB
+seq2seq_gpu = 150s
+transformer_gpu = 745s
+seq2seq_cpu = 468s
+transformer_cpu = 1580s

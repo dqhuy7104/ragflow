@@ -18,6 +18,7 @@ import logging
 import copy
 import time
 import os
+import importlib.metadata
 
 from huggingface_hub import snapshot_download
 
@@ -30,11 +31,82 @@ import math
 import numpy as np
 import cv2
 import onnxruntime as ort
+from PIL import Image
 
 from .postprocess import build_post_process
 
 loaded_models = {}
 VIETNAMESE_HINT_CHARS = set("đĐăĂâÂêÊôÔơƠưƯ")
+
+
+def _package_version(name: str) -> str:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return "not installed"
+
+
+class VietOCRRecognizer:
+    def __init__(
+        self,
+        config_name: str = "vgg_transformer",
+        weights: str | None = None,
+        use_gpu: bool = False,
+        device_id: int | None = None,
+    ):
+        try:
+            from vietocr.tool.predictor import Predictor
+            from vietocr.tool.config import Cfg
+        except ModuleNotFoundError as exc:
+            if exc.name and exc.name.startswith("vietocr"):
+                raise RuntimeError(
+                    "VietOCR is not installed. Install it with `pip install vietocr`."
+                ) from exc
+            raise
+        except Exception as exc:
+            torch_version = _package_version("torch")
+            torchvision_version = _package_version("torchvision")
+            raise RuntimeError(
+                "Failed to import VietOCR dependencies. This usually means the local `torch` and `torchvision` "
+                f"packages are incompatible. Current versions: torch={torch_version}, torchvision={torchvision_version}. "
+                f"Original error: {exc}"
+            ) from exc
+
+        config = Cfg.load_config_from_name(config_name)
+        if weights:
+            config["weights"] = weights
+        if "cnn" in config and isinstance(config["cnn"], dict):
+            config["cnn"]["pretrained"] = False
+        if use_gpu:
+            config["device"] = f"cuda:{0 if device_id is None else device_id}"
+        else:
+            config["device"] = "cpu"
+
+        try:
+            self.predictor = Predictor(config)
+        except Exception as exc:
+            torch_version = _package_version("torch")
+            torchvision_version = _package_version("torchvision")
+            raise RuntimeError(
+                "Failed to initialize VietOCR. This usually means the local `torch` and `torchvision` packages "
+                f"are incompatible. Current versions: torch={torch_version}, torchvision={torchvision_version}. "
+                f"Original error: {exc}"
+            ) from exc
+
+        logging.info(
+            "Loaded VietOCR recognizer with config=%s, use_gpu=%s, weights=%s, device=%s",
+            config_name,
+            use_gpu,
+            weights or "<package default>",
+            config["device"],
+        )
+
+    def __call__(self, img_list):
+        texts = []
+        for img in img_list:
+            text = self.predictor.predict(Image.fromarray(img))
+            texts.append((text or "", 1.0))
+        return texts
 
 def transform(data, ops=None):
     """ transform """
@@ -541,7 +613,7 @@ class TextDetector:
 
 
 class OCR:
-    def __init__(self, model_dir=None, model_repo_id=None):
+    def __init__(self, model_dir=None, model_repo_id=None, recognition_backend=None):
         """
         If you have trouble downloading HuggingFace models, -_^ this might help!!
 
@@ -556,6 +628,7 @@ class OCR:
         self.model_repo_id = model_repo_id or os.getenv("DEEPDOC_OCR_REPO_ID", "InfiniFlow/deepdoc")
         self.model_dir = model_dir or os.getenv("DEEPDOC_OCR_MODEL_DIR")
         self._model_dir_explicit = bool(self.model_dir)
+        self.recognition_backend = (recognition_backend or os.getenv("DEEPDOC_OCR_BACKEND", "vietocr")).lower()
 
         if not self.model_dir:
             self.model_dir = os.path.join(get_project_base_directory(), "rag/res/deepdoc")
@@ -596,12 +669,45 @@ class OCR:
         if settings.PARALLEL_DEVICES > 0:
             self.text_detector = []
             self.text_recognizer = []
+            self.vietocr_recognizer = []
             for device_id in range(settings.PARALLEL_DEVICES):
                 self.text_detector.append(TextDetector(model_dir, device_id))
                 self.text_recognizer.append(TextRecognizer(model_dir, device_id))
+                self.vietocr_recognizer.append(self._build_vietocr_recognizer(device_id))
         else:
             self.text_detector = [TextDetector(model_dir)]
             self.text_recognizer = [TextRecognizer(model_dir)]
+            self.vietocr_recognizer = [self._build_vietocr_recognizer()]
+
+        self.vietocr_enabled = self.recognition_backend == "vietocr" and all(
+            recognizer is not None for recognizer in self.vietocr_recognizer
+        )
+        if self.recognition_backend == "vietocr" and not self.vietocr_enabled:
+            logging.warning(
+                "VietOCR was requested as the default recognizer but could not be initialized. Falling back to the built-in recognizer."
+            )
+
+    def _build_vietocr_recognizer(self, device_id: int | None = None):
+        if self.recognition_backend != "vietocr":
+            return None
+
+        try:
+            return VietOCRRecognizer(
+                config_name=os.getenv("VIETOCR_CONFIG", "vgg_transformer"),
+                weights=os.getenv("VIETOCR_WEIGHTS"),
+                use_gpu=os.getenv("VIETOCR_USE_GPU", "false").lower() in ("1", "true", "yes"),
+                device_id=device_id,
+            )
+        except Exception as exc:
+            logging.warning("Failed to initialize VietOCR recognizer: %s", exc)
+            return None
+
+    def _recognize_crops(self, img_list, device_id: int):
+        if self.vietocr_enabled:
+            start = time.time()
+            rec_res = self.vietocr_recognizer[device_id](img_list)
+            return rec_res, time.time() - start
+        return self.text_recognizer[device_id](img_list)
 
     def get_rotate_crop_image(self, img, points):
         """
@@ -709,7 +815,7 @@ class OCR:
 
         img_crop = self.get_rotate_crop_image(ori_im, box)
 
-        rec_res, elapse = self.text_recognizer[device_id]([img_crop])
+        rec_res, elapse = self._recognize_crops([img_crop], device_id)
         text, score = rec_res[0]
         if score < self.drop_score:
             return ""
@@ -718,7 +824,7 @@ class OCR:
     def recognize_batch(self, img_list, device_id: int | None = None):
         if device_id is None:
             device_id = 0
-        rec_res, elapse = self.text_recognizer[device_id](img_list)
+        rec_res, elapse = self._recognize_crops(img_list, device_id)
         texts = []
         for i in range(len(rec_res)):
             text, score = rec_res[i]
@@ -754,7 +860,7 @@ class OCR:
             img_crop = self.get_rotate_crop_image(ori_im, tmp_box)
             img_crop_list.append(img_crop)
 
-        rec_res, elapse = self.text_recognizer[device_id](img_crop_list)
+        rec_res, elapse = self._recognize_crops(img_crop_list, device_id)
 
         time_dict['rec'] = elapse
 
