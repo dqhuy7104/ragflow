@@ -28,6 +28,8 @@ Cargo.lock
 
 # Exclude the log folder
 docker/ragflow-logs/
+docker/docker-compose.vietocr.gpu.yml
+docker/docker-compose.vietocr.yml
 /flask_session
 /logs
 rag/res/deepdoc

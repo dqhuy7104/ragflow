@@ -629,6 +629,13 @@ class OCR:
         self.model_dir = model_dir or os.getenv("DEEPDOC_OCR_MODEL_DIR")
         self._model_dir_explicit = bool(self.model_dir)
         self.recognition_backend = (recognition_backend or os.getenv("DEEPDOC_OCR_BACKEND", "vietocr")).lower()
+        logging.info(
+            "Initializing OCR with backend=%s, model_dir=%s, model_repo_id=%s, parallel_devices=%s",
+            self.recognition_backend,
+            self.model_dir or "<default>",
+            self.model_repo_id,
+            settings.PARALLEL_DEVICES,
+        )
 
         if not self.model_dir:
             self.model_dir = os.path.join(get_project_base_directory(), "rag/res/deepdoc")
@@ -682,16 +689,30 @@ class OCR:
         self.vietocr_enabled = self.recognition_backend == "vietocr" and all(
             recognizer is not None for recognizer in self.vietocr_recognizer
         )
-        if self.recognition_backend == "vietocr" and not self.vietocr_enabled:
+
+        if self.recognition_backend == "vietocr" and self.vietocr_enabled:
+            logging.info(
+                "Initialized VietOCR successfully with %s recognizer instance(s).",
+                len(self.vietocr_recognizer),
+            )
+        elif self.recognition_backend == "vietocr" and not self.vietocr_enabled:
             logging.warning(
                 "VietOCR was requested as the default recognizer but could not be initialized. Falling back to the built-in recognizer."
             )
+
 
     def _build_vietocr_recognizer(self, device_id: int | None = None):
         if self.recognition_backend != "vietocr":
             return None
 
         try:
+            logging.info(
+                "Attempting to initialize VietOCR recognizer with config=%s, use_gpu=%s, weights=%s, device_id=%s",
+                os.getenv("VIETOCR_CONFIG", "vgg_transformer"),
+                os.getenv("VIETOCR_USE_GPU", "false").lower() in ("1", "true", "yes"),
+                os.getenv("VIETOCR_WEIGHTS") or "<package default>",
+                device_id if device_id is not None else 0,
+            )
             return VietOCRRecognizer(
                 config_name=os.getenv("VIETOCR_CONFIG", "vgg_transformer"),
                 weights=os.getenv("VIETOCR_WEIGHTS"),

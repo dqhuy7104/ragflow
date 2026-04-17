@@ -138,14 +138,13 @@ def get_svr_queue_names():
     return [get_svr_queue_name(priority) for priority in [1, 0]]
 
 def _get_or_create_secret_key():
-    # secret_key = os.environ.get("RAGFLOW_SECRET_KEY")
-    # if secret_key and len(secret_key) >= 32:
-    #     return secret_key
-    #
-    # # Check if there's a configured secret key
-    # configured_key = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("secret_key")
-    # if configured_key and configured_key != str(date.today()) and len(configured_key) >= 32:
-    #     return configured_key
+    env_secret_key = os.environ.get("RAGFLOW_SECRET_KEY") or os.environ.get("SECRET_KEY")
+    if env_secret_key and len(env_secret_key) >= 32:
+        return env_secret_key
+
+    configured_key = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("secret_key")
+    if configured_key and len(configured_key) >= 32:
+        return configured_key
 
     # Generate a new secure key and warn about it
     import logging
@@ -410,4 +409,3 @@ def _resolve_per_model_config(entry_dict, backup_factory, backup_api_key, backup
 def print_rag_settings():
     logging.info(f"MAX_CONTENT_LENGTH: {DOC_MAXIMUM_SIZE}")
     logging.info(f"MAX_FILE_COUNT_PER_USER: {int(os.environ.get('MAX_FILE_NUM_PER_USER', 0))}")
-

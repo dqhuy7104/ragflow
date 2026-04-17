@@ -8,9 +8,9 @@ services:
         condition: service_healthy
     build:
       context: ..
-      dockerfile: docker/Dockerfile.vietocr
+      dockerfile: Dockerfile
+      target: vietocr
       args:
-        BASE_IMAGE: ${RAGFLOW_IMAGE}
         TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu124}
         TORCH_VERSION: ${TORCH_VERSION:-2.6.0}
         TORCHVISION_VERSION: ${TORCHVISION_VERSION:-0.21.0}
@@ -38,7 +38,7 @@ services:
       - ./entrypoint.sh:/ragflow/entrypoint.sh
     env_file: .env
     environment:
-      DEEPDOC_OCR_RECOGNIZER_BACKEND: ${DEEPDOC_OCR_RECOGNIZER_BACKEND:-vietocr}
+      DEEPDOC_OCR_BACKEND: ${DEEPDOC_OCR_BACKEND:-vietocr}
       VIETOCR_CONFIG: ${VIETOCR_CONFIG:-vgg_transformer}
       VIETOCR_USE_GPU: ${VIETOCR_USE_GPU:-true}
       VIETOCR_WEIGHTS: ${VIETOCR_WEIGHTS:-}
