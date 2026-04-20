@@ -49,7 +49,7 @@ def _package_version(name: str) -> str:
 class VietOCRRecognizer:
     def __init__(
         self,
-        config_name: str = "vgg_transformer",
+        config_name: str = "vgg_seq2seq",
         weights: str | None = None,
         use_gpu: bool = False,
         device_id: int | None = None,
@@ -708,13 +708,13 @@ class OCR:
         try:
             logging.info(
                 "Attempting to initialize VietOCR recognizer with config=%s, use_gpu=%s, weights=%s, device_id=%s",
-                os.getenv("VIETOCR_CONFIG", "vgg_transformer"),
+                os.getenv("VIETOCR_CONFIG", "vgg_seq2seq"),
                 os.getenv("VIETOCR_USE_GPU", "false").lower() in ("1", "true", "yes"),
                 os.getenv("VIETOCR_WEIGHTS") or "<package default>",
                 device_id if device_id is not None else 0,
             )
             return VietOCRRecognizer(
-                config_name=os.getenv("VIETOCR_CONFIG", "vgg_transformer"),
+                config_name=os.getenv("VIETOCR_CONFIG", "vgg_seq2seq"),
                 weights=os.getenv("VIETOCR_WEIGHTS"),
                 use_gpu=os.getenv("VIETOCR_USE_GPU", "false").lower() in ("1", "true", "yes"),
                 device_id=device_id,

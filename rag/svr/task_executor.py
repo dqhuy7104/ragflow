@@ -586,16 +586,17 @@ async def embedding(docs, mdl, parser_config=None, callback=None):
             c = "None"
         cnts.append(c)
 
-    tk_count = 0
-    if len(tts) == len(cnts):
-        vts, c = await thread_pool_exec(mdl.encode, tts[0:1])
-        tts = np.tile(vts[0], (len(cnts), 1))
-        tk_count += c
-
     @timeout(60)
     def batch_encode(txts):
         nonlocal mdl
         return mdl.encode([truncate(c, mdl.max_length - 10) for c in txts])
+
+    tk_count = 0
+    if len(tts) == len(cnts):
+        async with embed_limiter:
+            vts, c = await thread_pool_exec(batch_encode, tts[0:1])
+        tts = np.tile(vts[0], (len(cnts), 1))
+        tk_count += c
 
     cnts_ = np.array([])
     for i in range(0, len(cnts), settings.EMBEDDING_BATCH_SIZE):

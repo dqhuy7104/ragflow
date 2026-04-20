@@ -1,4 +1,7 @@
 import { Outlet } from 'react-router';
+import authorizationUtil, {
+  redirectToLogin,
+} from '@/utils/authorization-util';
 import { Header } from './components/header';
 
 export function RootLayoutContainer({ children }: React.PropsWithChildren) {
@@ -12,6 +15,11 @@ export function RootLayoutContainer({ children }: React.PropsWithChildren) {
 }
 
 export default function RootLayout() {
+  if (!authorizationUtil.getAuthorization()) {
+    redirectToLogin();
+    return null;
+  }
+
   return (
     <RootLayoutContainer>
       <Outlet />

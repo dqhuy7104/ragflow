@@ -139,10 +139,6 @@ WORKDIR /ragflow
 # install dependencies from uv.lock file
 COPY pyproject.toml uv.lock ./
 
-ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
-ARG TORCH_VERSION=2.6.0
-ARG TORCHVISION_VERSION=0.21.0
-
 # https://github.com/astral-sh/uv/issues/10462
 # uv records index url into uv.lock but doesn't failover among multiple indexes
 RUN --mount=type=cache,id=ragflow_uv,target=/root/.cache/uv,sharing=locked \
@@ -154,10 +150,12 @@ RUN --mount=type=cache,id=ragflow_uv,target=/root/.cache/uv,sharing=locked \
     uv sync --python 3.12 --frozen && \
     # Ensure pip is available in the venv for runtime package installation (fixes #12651)
     .venv/bin/python3 -m ensurepip --upgrade && \
-    .venv/bin/python3 -m pip install --no-cache-dir --upgrade pip && \
-    .venv/bin/python3 -m pip install --no-cache-dir --index-url ${TORCH_INDEX_URL} \
-        torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} && \
-    .venv/bin/python3 -m pip install --no-cache-dir "numpy<2.4" alibabacloud_dingtalk vietocr
+    .venv/bin/python3 -m pip install --no-cache-dir \
+        vietocr \
+        "numpy<2.4" \
+        alibabacloud_dingtalk \
+        torch \
+        torchvision
 
 COPY web web
 COPY docs docs

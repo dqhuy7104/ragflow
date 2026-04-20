@@ -8,7 +8,13 @@ services:
         condition: service_healthy
     profiles:
       - cpu
-    image: ${RAGFLOW_IMAGE}
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.vietocr-overlay
+      args:
+        BASE_IMAGE: ${RAGFLOW_IMAGE}
+    image: ${RAGFLOW_VIETOCR_IMAGE:-ragflow-vietocr:local}
     # Example configuration to set up an MCP server:
     # command:
     #   - --enable-mcpserver
@@ -47,7 +53,7 @@ services:
     env_file: .env
     environment:
       DEEPDOC_OCR_BACKEND: ${DEEPDOC_OCR_BACKEND:-vietocr}
-      VIETOCR_CONFIG: ${VIETOCR_CONFIG:-vgg_transformer}
+      VIETOCR_CONFIG: ${VIETOCR_CONFIG:-vgg_seq2seq}
       VIETOCR_USE_GPU: ${VIETOCR_USE_GPU:-false}
       VIETOCR_WEIGHTS: ${VIETOCR_WEIGHTS:-}
       VIETOCR_BATCH_SIZE: ${VIETOCR_BATCH_SIZE:-16}
@@ -65,7 +71,13 @@ services:
         condition: service_healthy
     profiles:
       - gpu
-    image: ${RAGFLOW_IMAGE}
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.vietocr-overlay
+      args:
+        BASE_IMAGE: ${RAGFLOW_IMAGE}
+    image: ${RAGFLOW_VIETOCR_IMAGE:-ragflow-vietocr:local}
     # Example configuration to set up an MCP server:
     # command:
     #   - --enable-mcpserver
@@ -99,6 +111,12 @@ services:
       - ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
       - ./entrypoint.sh:/ragflow/entrypoint.sh
     env_file: .env
+    environment:
+      DEEPDOC_OCR_BACKEND: ${DEEPDOC_OCR_BACKEND:-vietocr}
+      VIETOCR_CONFIG: ${VIETOCR_CONFIG:-vgg_seq2seq}
+      VIETOCR_USE_GPU: ${VIETOCR_USE_GPU:-false}
+      VIETOCR_WEIGHTS: ${VIETOCR_WEIGHTS:-}
+      VIETOCR_BATCH_SIZE: ${VIETOCR_BATCH_SIZE:-16}
     networks:
       - ragflow
     restart: unless-stopped

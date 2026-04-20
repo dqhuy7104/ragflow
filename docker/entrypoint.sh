@@ -247,9 +247,9 @@ function reset_vietocr_tmp_weights() {
 
     for weight_file in \
         "/tmp/weights.pth" \
-        "/tmp/vgg_transformer.pth" \
+        "/tmp/vgg_seq2seq.pth" \
         "${vietocr_tmpdir}/weights.pth" \
-        "${vietocr_tmpdir}/vgg_transformer.pth"; do
+        "${vietocr_tmpdir}/vgg_seq2seq.pth"; do
         if [[ -f "${weight_file}" ]]; then
             echo "Removing cached VietOCR weight: ${weight_file}"
             rm -f "${weight_file}"

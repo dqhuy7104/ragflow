@@ -1,0 +1,11 @@
+ARG BASE_IMAGE=infiniflow/ragflow:latest
+FROM ${BASE_IMAGE}
+
+USER root
+
+RUN /ragflow/.venv/bin/python3 -m pip install --no-cache-dir \
+    vietocr \
+    "numpy<2.4" \
+    alibabacloud_dingtalk \
+    torch \
+    torchvision
