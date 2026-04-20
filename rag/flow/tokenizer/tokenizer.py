@@ -47,7 +47,6 @@ class TokenizerParam(ProcessParamBase):
     def get_input_form(self) -> dict[str, dict]:
         return {}
 
-
 class Tokenizer(ProcessBase):
     component_name = "Tokenizer"
 
@@ -75,15 +74,15 @@ class Tokenizer(ProcessBase):
                 elif isinstance(f, list):
                     txt += "\n".join(f)
             texts.append(re.sub(r"</?(table|td|caption|tr|th)( [^<>]{0,12})?>", " ", txt))
+
+        vts, c = embedding_model.encode([name])
+        token_count += c
+        tts = np.concatenate([vts[0] for _ in range(len(texts))], axis=0)
+
         @timeout(60)
         def batch_encode(txts):
             nonlocal embedding_model
             return embedding_model.encode([truncate(c, embedding_model.max_length - 10) for c in txts])
-
-        async with embed_limiter:
-            vts, c = await thread_pool_exec(batch_encode, [name])
-        token_count += c
-        tts = np.concatenate([vts[0] for _ in range(len(texts))], axis=0)
 
         cnts_ = np.array([])
         for i in range(0, len(texts), settings.EMBEDDING_BATCH_SIZE):
